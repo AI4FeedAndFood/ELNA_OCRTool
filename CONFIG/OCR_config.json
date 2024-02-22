@@ -1,0 +1,141 @@
+{   
+    "Nutricia" : {
+        "date_de_commande" : {
+            "global_info" : 1,
+            "subregion" : [[0, 0.2], [0.8, 1]],
+            "key_sentences" : ["Libra QC"],
+            "relative_position" : [[[1,3], [-0.5,3]]],
+            "conditions" : ["date"]
+        },
+        "facturation" : {
+            "global_info" : 1,
+            "subregion" : [[0.0, 0.3], [0, 0.3]],
+            "key_sentences" : [""],
+            "relative_position" : [[[-0.5,1.3], [0,3]]],
+            "conditions" : ["constant", "Nutricia"]
+        },
+        "contact" : {
+            "global_info" : 1,
+            "subregion" : [[0, 0.3], [0, 0.3]],
+            "key_sentences" : [""],
+            "relative_position" : [[[-0.3,1.5], [0,5]]],
+            "conditions" : ["constant", "dailledouze@maisadour.com"]
+        },
+        "N_d_echantillon" : {
+            "global_info" : 0,
+            "subregion" : [[0.3, 0.6], [0, 0.4]],
+            "key_sentences" : ["N° echantillon"],
+            "relative_position" : [[[-3,1.5], [0,6]]],
+            "conditions" : ["format", ["YYMM"]]
+        },
+        "type" : {
+            "global_info" : 0,
+            "subregion" : [[0.33, 0.63], [0, 0.4]],
+            "key_sentences" : ["Type"],
+            "relative_position" : [[[-3,1.5], [0,10]]],
+            "conditions" : ["after_key", [["Type"], []]]
+        },
+        "nature_produit" : {
+            "global_info" : 0,
+            "subregion" : [[0.35, 0.65], [0, 0.4]],
+            "key_sentences" : ["Produit"],
+            "relative_position" : [[[-0.3,1.5], [0,10]]],
+            "conditions" : ["after_key", [["Produit"], []]]
+        },
+        "lieu_prelevement" : {
+            "global_info" : 0,
+            "subregion" : [[0.38, 0.68], [0, 0.4]],
+            "key_sentences" : ["Lieu de prelevement"],
+            "relative_position" : [[[-0.3,1.5], [0,10]]],
+            "conditions" : ["after_key", [["Lieu", "de", "prelevement"], []]]
+        },
+        "classe_produit" : {
+            "global_info" : 0,
+            "subregion" : [[0.42, 0.75], [0, 0.4]],
+            "key_sentences" : ["Classe"],
+            "relative_position" : [[[-0.3,1.5], [0,10]]],
+            "conditions" : ["after_key", [["Classe"], []]]
+        },
+        "N_de_lot" : {
+            "global_info" : 0,
+            "subregion" : [[0.42, 0.75], [0, 0.4]],
+            "key_sentences" : ["Lot ou N° reception"],
+            "relative_position" : [[[-0.3,1.5], [0,10]]],
+            "conditions" : ["after_key", [["Lot", "ou", "N°", "reception"], []]]
+        },
+        "fournisseur" : {
+            "global_info" : 0,
+            "subregion" : [[0.47, 0.78], [0, 0.4]],
+            "key_sentences" : ["Founisseur"],
+            "relative_position" : [[[-0.3,1.5], [0,10]]],
+            "conditions" : ["after_key", [["Founisseur"], []]]
+        },
+        "date_de_prelevement" : {
+            "global_info" : 0,
+            "subregion" : [[0.53, 0.83], [0, 0.4]],
+            "key_sentences" : ["Date livraison ou"],
+            "relative_position" : [[[-0.3,1.5], [0,10]]],
+            "conditions" : ["date"]
+        },
+        "analyse" : {
+            "global_info" : 0,
+            "subregion" : [[0.75, 1], [0, 0.6]],
+            "key_sentences" : ["Methode"],
+            "relative_position" : [[[1,16], [-20,2]]],
+            "conditions" : ["list", "analyse", "multiple"]
+        },
+        "remarques" : {
+            "global_info" : 0,
+            "subregion" : [[0, 0], [0,0]],
+            "key_sentences" : [""],
+            "relative_position" : [[[0,0], [0,0]]],
+            "conditions" : ["list", "analyse", "multiple"]
+        }
+    },
+    
+    "RoyalCanin" : {
+        "lieu_prelevement" : {
+            "global_info" : 1,
+            "subregion" : [[0.3, 0.6], [0.1, 0.6]],
+            "key_sentences" : [],
+            "relative_position" : [[[], []]],
+            "conditions" : ["", [[], []]]
+        },
+        "date_de_prelevement" : {
+            "global_info" : 1,
+            "subregion" : [[0.5, 0.8], [0.5, 1]],
+            "key_sentences" : ["Edited on"],
+            "relative_position" : [[[-0.5,1.5], [1,5]]],
+            "conditions" : ["date"]
+        },
+        "N_de_commande" : {
+            "global_info" : 1,
+            "subregion" : [[0.65, 0.95], [0.3, 1]],
+            "key_sentences" : [],
+            "relative_position" : [[[0,1], [1,20]]],
+            "conditions" : ["format", ["PR", "YYMM"]]
+        },
+        "N_d_echantillon" : {
+            "global_info" : 0,
+            "subregion" : [[0, 0.5], [0.3, 0.8]],
+            "key_sentences" : [],
+            "relative_position" : [[[0,1], [1,20]]],
+            "conditions" : ["format", ["AL-", "YYMM"]]
+        },
+        "type" : {
+            "global_info" : 0,
+            "subregion" : [[0, 0.6], [0.3, 0.8]],
+            "key_sentences" : [],
+            "relative_position" : [[[0,1], [1,20]]],
+            "conditions" : ["format", ["NNNN"]]
+        },
+        "analyse" : {
+            "global_info" : 0,
+            "subregion" : [[0, 1], [0.1, 0.8]],
+            "key_sentences" : [],
+            "relative_position" : [[[1,20], [-20,2]]],
+            "conditions" : ["list", "analyse", "multiple"]
+        }
+    }
+}
+    

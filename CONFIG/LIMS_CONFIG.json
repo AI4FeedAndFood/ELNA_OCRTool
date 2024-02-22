@@ -1,0 +1,48 @@
+{
+    "TOOL_PATH" : {
+        "input_folder" : "C:\\Users\\CF6P\\Desktop\\ELNA\\Data_ELNA\\Nutricia\\test",
+        "output_folder" : ""
+    },
+    "CLEAN_ZONE" : {
+        "N_d_echantillon" : "Numero d'echantillon",
+        "N_de_commande" : "Numero de commande",
+        "type" : "Type de produit",
+        "nature_produit" : "Nature produit",
+        "lieu_prelevement" : "Lieu du prelevement",
+        "classe_produit" : "Classe produit",
+        "N_de_lot" : "Numero de lot",
+        "fournisseur" : "Fournisseur",
+        "date_de_prelevement" : "Date de prelevement",
+        "facturation" : "Facturation",
+        "contact" : "Contact",
+        "date_livraison" : "Date de livraison",
+        "analyse"  :"Analyses demandées",
+        "remarques" : "Remarques",
+        "date_de_commande" : "Date de commande"
+    },
+    "LIMS_CONVERTER" : {
+        "CustomerCode" : ["root", "CustomerCode"],
+        "ContractCode" :  ["root", "ContractCode"],
+        "Devis" :  ["root", "Devis"],
+        "EngamentJuridique" :  ["AdditionalField", "LO00300"],
+        "N_d_echantillon" : ["Sample", "CustomerReference"],
+        "N_de_commande" : ["", ""],
+        "type" : ["AdditionalField", "AA091"],
+        "nature_produit" : ["AdditionalField", "AA091"],
+        "lieu_prelevement" :["AdditionalField", "AA009"],
+        "classe_produit" :["AdditionalField", "AA402"],
+        "N_de_lot" : ["AdditionalField", "AA138"],
+        "fournisseur" : ["AdditionalField", "AA041"],
+        "date_de_prelevement" : ["AdditionalField", "AA046"],
+        "remarques" : ["AdditionalField", "AA264"],
+        "nom"  : ["AdditionalField", "LN478"],
+        "variete" : ["AdditionalField", "AAA036_variete"],
+        "pays_d_origine" : ["AdditionalField", "AAA036_pays_origine"],
+        "N_de_scelle" : ["AdditionalField", "IP005"],
+        "testcode" : ["Sample", "TestCode"],
+        "packagecode" : ["Sample", "PackageCode"],
+        "type_lot" : ["AdditionalField", "IP001"],
+        "ref_echantillon" : ["Sample", "ReferenceEchantillon"],
+        "lot" : ["AdditionalField", "IP001"]
+    }
+}
