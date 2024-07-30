@@ -1,3 +1,6 @@
+import sys
+import os
+
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,10 +23,15 @@ from ConditionFilter import condition_filter
 
 MODEL = "Nutricia"
 
-OCR_HELPER_JSON_PATH  = r"CONFIG\OCR_config.json"
-OCR_HELPER = json.load(open(OCR_HELPER_JSON_PATH, encoding="utf-8"))[MODEL]
+if 'AppData' in sys.executable:
+    application_path = os.getcwd()
+else : 
+    application_path = os.path.dirname(sys.executable)
 
-lists_df = pd.read_excel(r"CONFIG\\lists.xlsx")
+OCR_HELPER_JSON_PATH  = os.path.join(application_path, "CONFIG\OCR_config.json")
+OCR_HELPER = json.load(open(OCR_HELPER_JSON_PATH, encoding="utf-8"))
+MODEL_HELPER = OCR_HELPER[MODEL]
+OCR_PATHES = OCR_HELPER["PATHES"]
 
 NULL_OCR = {"text" : "",
             "box" : [],
@@ -183,7 +191,7 @@ def clean_sequence(paddle_list, full = "|\[]_!<>{}—;$€&*‘§—~-+", left="
 
     return res_dicts
 
-def get_key_matches_and_OCR(cropped_image, JSON_HELPER=OCR_HELPER, show=False):
+def get_key_matches_and_OCR(cropped_image, MODEL_HELPER=MODEL_HELPER, show=False):
     """
     Perform the OCR on the processed image, find the landmarks and make sure there are in the right area 
     Args:
@@ -201,7 +209,7 @@ def get_key_matches_and_OCR(cropped_image, JSON_HELPER=OCR_HELPER, show=False):
     # Search text on the whole image
     full_img_OCR =  paddle_OCR(cropped_image, show)
     full_img_OCR = clean_sequence(full_img_OCR)
-    for zone, key_points in JSON_HELPER.items():
+    for zone, key_points in MODEL_HELPER.items():
         landmark_region = key_points["subregion"] # Area informations
         ymin, ymax = image_height*landmark_region[0][0],image_height*landmark_region[0][1]
         xmin, xmax = image_width*landmark_region[1][0],image_width*landmark_region[1][1]
@@ -239,28 +247,26 @@ def get_area(cropped_image, box, relative_position, corr_ratio=1.1):
     (y_min, x_min) , (y_max, x_max) = np.array([[y_min, x_min], [y_max, x_max]]).astype(int)[:2]
     return x_min, y_min, x_max, y_max
 
-def get_wanted_text(cropped_image, zone_key_match_dict, full_img_OCR, JSON_HELPER, show=False):
+def get_wanted_text(cropped_image, zone_key_match_dict, full_img_OCR, MODEL_HELPER, model, show=False):
     
     zone_matches = {}
-    for zone, key_points in JSON_HELPER.items():
-        key_match =  zone_key_match_dict[zone]
-        i_key, box = key_match.key_index,  key_match.OCR["box"]
-        condition, relative_position = key_points["conditions"], key_points["relative_position"][i_key]
-        xmin, ymin, xmax, ymax = box if key_match.confidence==-1 else get_area(cropped_image, box, relative_position, corr_ratio=1.15)
+    for zone, key_points in MODEL_HELPER.items():
 
+        key_match =  zone_key_match_dict[zone]
+        box = key_match.OCR["box"]
+        condition, relative_position = key_points["conditions"], key_points["relative_position"]
+
+        xmin, ymin, xmax, ymax = box if key_match.confidence==-1 else get_area(cropped_image, box, relative_position, corr_ratio=1.15)
         
         candidate_dicts = [dict_sequence for dict_sequence in full_img_OCR if 
                       (xmin<dict_sequence["box"][0]<xmax) and (ymin<dict_sequence["box"][1]<ymax)]
                 
         zone_match = ZoneMatch(candidate_dicts, [], 0, [])
 
-        match_indices, res_seq = condition_filter(candidate_dicts, condition, MODEL)
-
+        match_indices, res_seq = condition_filter(candidate_dicts, condition, model, application_path, ocr_pathes=OCR_PATHES,)
         if len(res_seq)!=0:
             if type(res_seq[0]) != type([]):
                 res_seq = unidecode(" ".join(res_seq))
-            else:
-                res_seq = list([unidecode(" ".join(seq)) for seq in res_seq])
 
         zone_match.match_indices , zone_match.res_seq = match_indices, res_seq
         zone_match.confidence = min([candidate_dicts[i]["proba"] for i in zone_match.match_indices]) if zone_match.match_indices else 0
@@ -287,22 +293,10 @@ def model_particularities(zone_matches):
         if ech[:6].isnumeric():
             zone_matches["date_de_commande"] = deepcopy(zone_matches["N_d_echantillon"])
             zone_matches["date_de_commande"]["sequence"] =  ech[4:6]+ "/" + ech[2:4] + "/20"+ ech[:2]
-    
-    if len(zone_matches["contact"]["sequence"]):
-        seq = zone_matches["contact"]["sequence"]
-        emails = seq.split()
-        res = []
-        for _, email in enumerate(emails):
-            if "@" in email :
-                if ".com" in email:
-                    res.append(email)
-                else :
-                    res.append(email+".com")
-        zone_matches["contact"]["sequence"] = " ".join(res)
 
     return zone_matches
 
-def textExtraction(cropped_image, zone_key_match_dict, full_img_OCR, JSON_HELPER=OCR_HELPER):
+def textExtraction(cropped_image, zone_key_match_dict, full_img_OCR, model, MODEL_HELPER=MODEL_HELPER):
     """
     The main fonction to extract text from FDA
 
@@ -314,7 +308,7 @@ def textExtraction(cropped_image, zone_key_match_dict, full_img_OCR, JSON_HELPER
         }
     """
 
-    zone_matches = get_wanted_text(cropped_image, zone_key_match_dict, full_img_OCR, JSON_HELPER, show=False)
+    zone_matches = get_wanted_text(cropped_image, zone_key_match_dict, full_img_OCR, MODEL_HELPER, model, show=False)
     zone_matches = model_particularities(zone_matches)
 
     for zone, dict in zone_matches.items():
@@ -322,12 +316,12 @@ def textExtraction(cropped_image, zone_key_match_dict, full_img_OCR, JSON_HELPER
 
     return zone_matches
 
-def main(scan_dict):
+def main(scan_dict, model=MODEL):
 
     pdfs_res_dict = {}
 
     for pdf, images_dict in scan_dict.items():
-        print("Traitement de :", pdf)
+        print("\n##### Traitement de :", pdf, " #####")
         for image_name, sample_image in list(images_dict.items())[:1]: # The first image is the only one to concider
             pdfs_res_dict[pdf] = {}
 
@@ -338,7 +332,7 @@ def main(scan_dict):
             # plt.show()
 
             zone_key_match_dict, full_img_OCR = get_key_matches_and_OCR(image, show=False)
-            sample_matches = textExtraction(image, zone_key_match_dict, full_img_OCR , JSON_HELPER=OCR_HELPER)
+            sample_matches = textExtraction(image, zone_key_match_dict, full_img_OCR, model, MODEL_HELPER=MODEL_HELPER)
 
             # Here one scan = one sample
             pdfs_res_dict[pdf]["sample_0"] = {"IMAGE" : image_name,

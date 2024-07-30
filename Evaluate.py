@@ -67,9 +67,4 @@ def eval_text_extraction(path_to_eval, eval_path = r"C:\Users\CF6P\Desktop\cv_te
     
 
 if __name__ == "__main__":
-    
-    result_name = "prod_V2.4_Bin"
-    eval_path = r"C:\Users\CF6P\Desktop\ELPV\Eval"
-    start = time.time()
-    eval_text_extraction(eval_path, eval_path=eval_path, result_name=result_name)
-    
+    pass

@@ -58,10 +58,10 @@ def TextCVTool(path, model, config = ["paddle", "OCR", "en"]):
     scan_dict = getAllImages(path)
 
     if model == 'Nutricia':
-        from Nutricia import main
+        from Model_Nutricia import main
     
     if model == "RoyalCanin":
-        from RoyalCanin import main
+        from Model_RoyalCanin import main
         
     pdfs_res_dict["RESPONSE"] = main(scan_dict)
 

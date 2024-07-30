@@ -348,10 +348,11 @@ def get_wanted_text(cropped_image, zone_key_match_dict, full_img_OCR, sample_dic
 
         if sample_dict["global_info"] != key_points["global_info"]:
             continue
-        
+
         key_match =  zone_key_match_dict[zone]
-        i_key, box = key_match.key_index,  key_match.OCR["box"]
-        condition, relative_position = key_points["conditions"], key_points["relative_position"][i_key]
+        box = key_match.OCR["box"]
+        condition, relative_position = key_points["conditions"], key_points["relative_position"]         
+
         # Image relative positions
         xmin, ymin, xmax, ymax = box if key_match.confidence==-1 else get_area(cropped_image, box, relative_position, corr_ratio=1.15)
 

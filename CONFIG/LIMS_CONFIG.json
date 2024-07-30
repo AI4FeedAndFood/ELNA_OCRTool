@@ -1,9 +1,23 @@
 {
     "TOOL_PATH" : {
         "input_folder" : "C:\\Users\\CF6P\\Desktop\\ELNA\\Data_ELNA\\Nutricia\\test",
-        "output_folder" : ""
+        "output_folder" : "",
+        "copy_folder" : ""
     },
-    "CLEAN_ZONE" : {
+
+    "MODELS" : ["Nutricia"],
+
+    "ADDED_FIELDS" : ["analyse_specification", "client_name", "contract_name", "rush_level"],
+
+    "SAMPLE_MERGER" : "",
+
+    "PRODUCTCODE_DICT" : {},
+
+    "BASE_CLIENT_CONTRACT" : {
+        "Nutricia" : ["HORS OQUALIM - Facturation NUTRICIA °", "Kevin DAILLEDOUZE"]
+    },
+    
+    "CLEAN_ZONE_NAMES" : {
         "N_d_echantillon" : "Numero d'echantillon",
         "N_de_commande" : "Numero de commande",
         "type" : "Type de produit",
@@ -20,29 +34,94 @@
         "remarques" : "Remarques",
         "date_de_commande" : "Date de commande"
     },
+
     "LIMS_CONVERTER" : {
-        "CustomerCode" : ["root", "CustomerCode"],
-        "ContractCode" :  ["root", "ContractCode"],
-        "Devis" :  ["root", "Devis"],
-        "EngamentJuridique" :  ["AdditionalField", "LO00300"],
-        "N_d_echantillon" : ["Sample", "CustomerReference"],
-        "N_de_commande" : ["", ""],
-        "type" : ["AdditionalField", "AA091"],
-        "nature_produit" : ["AdditionalField", "AA091"],
-        "lieu_prelevement" :["AdditionalField", "AA009"],
-        "classe_produit" :["AdditionalField", "AA402"],
-        "N_de_lot" : ["AdditionalField", "AA138"],
-        "fournisseur" : ["AdditionalField", "AA041"],
-        "date_de_prelevement" : ["AdditionalField", "AA046"],
-        "remarques" : ["AdditionalField", "AA264"],
-        "nom"  : ["AdditionalField", "LN478"],
-        "variete" : ["AdditionalField", "AAA036_variete"],
-        "pays_d_origine" : ["AdditionalField", "AAA036_pays_origine"],
-        "N_de_scelle" : ["AdditionalField", "IP005"],
-        "testcode" : ["Sample", "TestCode"],
-        "packagecode" : ["Sample", "PackageCode"],
-        "type_lot" : ["AdditionalField", "IP001"],
-        "ref_echantillon" : ["Sample", "ReferenceEchantillon"],
-        "lot" : ["AdditionalField", "IP001"]
+
+        "Name" : {
+            "path" : "Order.Name",
+            "input": "Name"
+        },
+        "RecipientLabCode" : {
+            "path" : "Order.RecipientLabCode",
+            "input": "HARDCODE",
+            "value" : "EUFR16"
+        },
+        "PurchaseOrderDate" : {
+            "path" : "Order.PurchaseOrderDate",
+            "input": "date_de_commande"
+        },
+        "CustomerCode" : {
+            "path" : "Order.CustomerCode",
+            "input": "CustomerCode"
+        },
+        "ContractCode" : {
+            "path" : "Order.ContractCode",
+            "input": "ContractCode"
+        },
+        "BatchCustomerReference" : {
+            "path" : "Order.Samples.Sample.BatchCustomerReference",
+            "input": "N_de_lot"
+        },
+        "RushLevel" : {
+            "path" : "Order.Samples.Sample.RushLevel",
+            "input": "rush_level"
+        },
+        "CustomerReference" : {
+            "path" : "Order.Samples.Sample.CustomerReference",
+            "input": "N_d_echantillon"
+        },
+        "SampleDescription" : {
+            "path" : "Order.Samples.Sample.Description",
+            "input": "nature_produit"
+        },
+        "Type" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA091",
+            "input": "type"
+        },
+        "Produit" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA129",
+            "input": "nature_produit"
+        },
+        "Lieu de prélèvement" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA009",
+            "input": "lieu_prelevement"
+        },
+        "Classe" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA402",
+            "input": "classe_produit"
+        },
+        "Lot" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA138",
+            "input": "N_de_lot"
+        },
+        "Fournisseur" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA041",
+            "input": "fournisseur"
+        },
+        "Date livraison" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA046",
+            "input": "date_de_prelevement"
+        },
+        "Commentaire" : {
+            "path" : "Order.Samples.Sample.AdditionalFields.AdditionalField.AA264",
+            "input": "remarques"
+        },
+        "FractionCode" : {
+            "path" : "Order.Samples.Sample.SampleFractions.SampleFraction.FractionCode",
+            "input": "HARDCODE",
+            "value" : "J01"
+        },
+        "CustomerPackage" : {
+            "path" : "Order.Samples.Sample.SampleFractions.SampleFraction.InvoiceableItems.InvoiceableItem.CustomerPackageCode",
+            "input": "CustomerPackage"
+        },
+        "TestCode" : {
+            "path" : "Order.Samples.Sample.SampleFractions.SampleFraction.InvoiceableItems.InvoiceableItem.TestCode",
+            "input": "TestCode"
+        },
+        "PackageCode" : {
+            "path" : "Order.Samples.Sample.SampleFractions.SampleFraction.InvoiceableItems.InvoiceableItem.PackageCode",
+            "input": "PackageCode"
+        }
     }
 }

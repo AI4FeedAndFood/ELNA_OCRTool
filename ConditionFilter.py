@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+ 
+import re
+import os
 
 from copy import deepcopy
 from JaroDistance import jaro_distance
@@ -8,7 +11,35 @@ from unidecode import unidecode
 from datetime import datetime
 year = datetime.now().year
 
-def list_process(candidates, condition, lists_df):
+def _get_sheet(path, condition_dict, model):
+
+    if not "sheet_name" in condition_dict.keys():
+        df = pd.read_excel(path)
+    
+    else:
+        sheet_name = condition_dict["sheet_name"]
+
+        xl = pd.ExcelFile(path)
+        sheet_names = xl.sheet_names  # see all sheet names
+
+        if sheet_name in sheet_names:
+            df = xl.parse(sheet_name)
+        elif sheet_name+" "+model in sheet_names:
+            df = xl.parse(sheet_name+" "+model)
+        else :
+            df = pd.read_excel(path)
+
+    return df
+
+def list_process(candidates, condition_dict, lists_df, min_jaro = 0.95):
+    """ Search candidates that contains all the word from a list of word/sequence, with a word by word 'min_jaro' tolerance"
+
+    Args:
+        candidates (list of dict): 
+        condition (list of three elements): ["list", column of lists_df to extract all the target words, multiple or single]
+        lists_df (DataFrame): _description_
+    """
+
     def sub_mistakes(word):
         # Replace common mistakes from the OCR to find a perfect match
         word = word.replace("O", "0") if "O" in word else word
@@ -19,7 +50,7 @@ def list_process(candidates, condition, lists_df):
         """ 
         Returned a dict wich carry the information about the best matched word among all sequences
         """
-        max_jaro = 0.89
+        max_jaro = min_jaro
         status_dict = {
             "find" : False,
             "index" : -1,
@@ -28,12 +59,12 @@ def list_process(candidates, condition, lists_df):
         }
 
         for i_word, word in enumerate(candidate_sequence):
-            if check_word.lower() in [ word.strip(": _;").lower(), sub_mistakes(word).strip(": _;").lower()]:
+            if unidecode(check_word.lower()) in [unidecode(word.strip(": _;").lower()), unidecode(sub_mistakes(word).strip(": _;").lower())]:
                 status_dict["find"], status_dict["index"] = True, candidate_index[i_word]
                 status_dict["jaro"], status_dict["word"] = 1, check_word
                 return status_dict
             
-            jaro = jaro_distance(word.lower(), check_word.lower())
+            jaro = jaro_distance(unidecode(word.lower()), unidecode(check_word.lower()))
             if jaro > max_jaro:
                 status_dict["find"], status_dict["index"] = True, candidate_index[i_word]
                 status_dict["jaro"], status_dict["word"] = jaro, check_word
@@ -42,13 +73,14 @@ def list_process(candidates, condition, lists_df):
 
     all_text, all_indices = [], []
     matched_elmts = []
-    mode = condition[2]
+    mode = condition_dict["mode"]
 
     for i_text, dict_text in enumerate(candidates):
         all_text+=dict_text["text"]
         all_indices+= [i_text for i in range(len(dict_text["text"]))]
 
-    check_list = list(lists_df[condition[1]].dropna().unique())
+    check_list = list(lists_df[condition_dict["column"]].dropna().unique())
+
     for check_elmt in check_list:
         found_elmts = []
         check_words = check_elmt.split(" ")
@@ -57,7 +89,7 @@ def list_process(candidates, condition, lists_df):
             if found_dict["find"]: # If a check word is found : stack it
                 found_elmts.append(found_dict)
     
-            if len(found_elmts) == len(check_words) and check_elmt not in [matched_elmt["element"] for matched_elmt in matched_elmts]: # All word of the checking elements are in the same candidate sequence                          print(check_elmt, jaro_elmt)
+            if 0<len(found_elmts)<=len(check_words) and check_elmt not in [matched_elmt["element"] for matched_elmt in matched_elmts]: # if some checking ellement are found and there are not assigned yet
                 
                 matched_elmts.append({
                                     "element": check_elmt,
@@ -65,16 +97,24 @@ def list_process(candidates, condition, lists_df):
                                     "jaro" : min([d["jaro"] for d in found_elmts]),
                                     "index" : np.median(np.array([d["index"] for d in found_elmts], dtype=np.int64))
                                     })
+                
     matched_elmts = sorted(matched_elmts, key=lambda x: x["index"])
-    
+
     res_seq, match_indices = [], []
     if matched_elmts:
         if mode == "multiple": # Return all found elements sorted by index
             res_seq, match_indices = [[matched_elmt["element"]] for matched_elmt in matched_elmts], [int(matched_elmt["index"]) for matched_elmt in matched_elmts]
         if mode == "single":
-            matched_elmts = sorted(matched_elmts, key=lambda x: (x["jaro"], -x["index"]), reverse=True)
+            matched_elmts = sorted(matched_elmts, key=lambda x: (-len(x["words"]), -x["jaro"], x["index"]), reverse=False)
             res_seq, match_indices = [matched_elmts[0]["element"]], [int(matched_elmts[0]["index"])]
 
+    return match_indices, res_seq
+
+def cell_process(candidates):
+    match_indices, res_seq = [], []
+    for i_text, dict_text in enumerate(candidates):
+        res_seq+=dict_text["text"]
+        match_indices+=[i_text]
     return match_indices, res_seq
 
 def after_key_process(candidates, bound_keys, similarity=0.85):
@@ -111,12 +151,14 @@ def after_key_process(candidates, bound_keys, similarity=0.85):
         return res_index, full_seq
     
     strip = '().*:‘;,§"'+"'"
-    ref = {0:"start", 1:"end"}
-    key_boundaries = {"start" : [], "end" : []} 
+    key_boundaries = {"after" : [], "before" : []} 
 
     # Get the all matched between keys and sequences for the start and the end key
-    for state, bound_key in enumerate(bound_keys):
-        for i_key, key_word in enumerate(bound_key):
+    for state, bound_key in bound_keys.items():
+        if bound_key ==  "":
+            continue
+        bound_word = bound_key.split(" ")
+        for i_key, key_word in enumerate(bound_word):
             for i_candidate, candidate_sequence in enumerate(candidates):
                     for i_word, word in enumerate(candidate_sequence["text"]):
                         word, key_word = unidecode(word).lower(), unidecode(key_word).lower()
@@ -126,15 +168,15 @@ def after_key_process(candidates, bound_keys, similarity=0.85):
                         # If the rwo words are close
                         if (jaro_distance(key_word, unidecode(word).strip(strip))>similarity):
                             word_match["i_key"],  word_match["i_candidate"], word_match["i_word"] = i_key, i_candidate, i_word
-                            key_boundaries[ref[state]].append(word_match)
+                            key_boundaries[state].append(word_match)
                             break
                         # If a sequence word is containing a key_word
                         if len(key_word)>2 and key_word in word:
                             word_match["i_key"],  word_match["i_candidate"], word_match["i_word"] = i_key, i_candidate, i_word
-                            key_boundaries[ref[state]].append(word_match)
+                            key_boundaries[state].append(word_match)
                             break
     
-    if key_boundaries["start"] == [] :
+    if key_boundaries["after"] == [] :
         if len(candidates)==1:
             print("DEFAULT CASE :", candidates[0]["text"])
             return [0], candidates[0]["text"]
@@ -145,17 +187,17 @@ def after_key_process(candidates, bound_keys, similarity=0.85):
                                                 key=lambda match : ([d["i_candidate"] for d in match_list].count(match["i_candidate"]), -match["i_candidate"]), 
                                                                     reverse=True) # Most matched sentence, the firt one in case of tie
    
-    last_start_match = sorted(_order_by_match_candidate(key_boundaries["start"]), key=lambda d:d["i_key"], reverse=True)[0]
+    last_start_match = sorted(_order_by_match_candidate(key_boundaries["after"]), key=lambda d:d["i_key"], reverse=True)[0]
 
     if last_start_match["i_word"] == len(candidates[last_start_match["i_candidate"]]["text"])-1:
         if last_start_match["i_candidate"] == len(candidates)-1:
             return [], []
         last_start_match["i_candidate"], last_start_match["i_word"] = last_start_match["i_candidate"]+1, 0
 
-    if key_boundaries["end"]==[]:
+    if key_boundaries["before"]==[]:
         first_end_seq_id = deepcopy(last_start_match) # Equivalent to a mis match : Will be changed in the next step
     else:
-        first_end_seq_id = sorted(_order_by_match_candidate(key_boundaries["end"]), key=lambda d:d["i_key"], reverse=False)[0]
+        first_end_seq_id = sorted(_order_by_match_candidate(key_boundaries["before"]), key=lambda d:d["i_key"], reverse=False)[0]
         # Empty field case
         if (first_end_seq_id["i_candidate"], first_end_seq_id["i_word"]) == (last_start_match["i_candidate"], last_start_match["i_word"]):
             return [],  []
@@ -172,8 +214,8 @@ def after_key_process(candidates, bound_keys, similarity=0.85):
     all_text = [word for text_candidate in text_candidates for word in text_candidate]
     all_local_indices = [i for i,text in enumerate(text_candidates) for s in range(len(text))]
 
-    search_range = (len(bound_keys[0]) - last_start_match["i_key"]) # 0> if the last detected word is not the last key word 
-    target_words = [bound_keys[0][-1]] + ["(*):"]
+    search_range = (len(bound_keys["after"]) - last_start_match["i_key"]) # 0> if the last detected word is not the last key word 
+    target_words = [bound_keys["after"].split(" ")[-1]] + ["(*):"]
     
     line_index, res_seq = _get_wanted_seq(all_text, target_words, search_range)
 
@@ -182,7 +224,6 @@ def after_key_process(candidates, bound_keys, similarity=0.85):
 def date_process(candidates, strip):
     match_indices, res_seq = [], []
     for i_candidate, candidate in enumerate(candidates):
-
         try:
             word_test = " ".join(candidate["text"])
             date  = datetime.strptime(word_test, "%B %d, %Y")
@@ -193,30 +234,38 @@ def date_process(candidates, strip):
         for i_word, word in enumerate(candidate["text"]):
             try:
                 word_test = word.lower().strip(strip+"abcdefghijklmnopqrstuvwxyz")
-                _ = bool(datetime.strptime(word_test, "%d/%m/%Y"))
-                return [i_candidate], [word_test]
+                date = datetime.strptime(word_test, "%d/%m/%Y")
+                return [i_candidate], [datetime.strftime(date, "%d/%m/%Y")]
             except ValueError:
                 pass
 
             try:
                 word_test = word[:10].lower().strip(strip+"abcdefghijklmnopqrstuvwxyz")
-                _ = bool(datetime.strptime(word_test, "%d/%m/%Y"))
-                return [i_candidate], [word_test]
+                date = datetime.strptime(word_test, "%d/%m/%Y")
+                return [i_candidate], [datetime.strftime(date, "%d/%m/%Y")]
             except ValueError:
                 pass
             
             try: # Case dd/mm/yy
                 word_test = word.lower().strip(strip+"abcdefghijklmnopqrstuvwxyz")
                 word_test = word_test[:-2] + "20" + word_test[-2:]
-                _ = bool(datetime.strptime(word_test, "%d/%m/%Y"))
-                return [i_candidate], [word_test]
+                date = datetime.strptime(word_test, "%d/%m/%Y")
+                return [i_candidate], [datetime.strftime(date, "%d/%m/%Y")]
+            except ValueError:
+                pass
+
+            try: # Case dd,mm,yy
+                word_test = word.lower().strip(strip+"abcdefghijklmnopqrstuvwxyz")
+                word_test = word_test[:-2] + "20" + word_test[-2:]
+                date = datetime.strptime(word_test, "%d,%m,%Y")
+                return [i_candidate], [datetime.strftime(date, "%d/%m/%Y")]
             except ValueError:
                 pass
 
             try: # Case dd-mm-yy
                 word_test = word.lower().strip(strip+"abcdefghijklmnopqrstuvwxyz")
-                _ = bool(datetime.strptime(word_test, "%d-%m-%Y"))
-                return [i_candidate], [word_test.replace("-", "/")]
+                date = datetime.strptime(word_test, "%d/%m/%Y")
+                return [i_candidate], [word_test]
             except ValueError:
                 pass
 
@@ -224,9 +273,8 @@ def date_process(candidates, strip):
                 word = word.lower().strip(strip)
                 _ = bool(datetime.strptime(word, "%B"))
                 full_date = "".join(candidate[i_word-1:i_word+2])
-                _ = bool(datetime.strptime(full_date, "%d%B%Y"))
-                return [i_candidate], [word]
-
+                date = datetime.strptime(full_date, "%d%B%Y")
+                return [i_candidate], [datetime.strftime(date, "%d/%m/%Y")]
             except:
                 continue
             
@@ -245,6 +293,7 @@ def contain_process(candidates, keys):
     return matched_indices, matched_candidates
 
 def format_process(candidates, keys):
+    
     def _format_start_with(key_word, word):
         if key_word == "YYMM":
             YY = year-2000
@@ -265,7 +314,9 @@ def format_process(candidates, keys):
     for i_cand, candidate in enumerate(candidates):
         count = 0
         word = "".join(candidate["text"])
+        word = re.sub("_-/\[]]", "", word)
         for _, key_word in enumerate(keys):
+            key_word = re.sub("_-/\[]]", "", key_word)
             if _format_start_with(key_word, word):
                 count+=1
                 word = word[len(key_word):]
@@ -280,7 +331,94 @@ def format_process(candidates, keys):
 
     return matched_indices, matched_candidates
 
-def condition_filter(candidates_dicts, condition, MODEL):
+def check_process(candidates, sense, checkboxes, lists_df, list_condition_dict):
+    """_summary_
+
+    Args:
+        candidates (list of dict):  of candidate dict
+        sense (right or left): Direction where to search after the checkbox as been detected
+        checkboxes (list of arrays): All screened checkboxes
+        lists_df (pd.Dataframe): df of all lists as columns
+        list_condition_dict (dict): "mode" : single or multiple values ; "column" : the column where of the list
+
+    Returns:
+        candidates_indices, check_candidates
+    """
+    check_candidates = []
+    candidates_indices = []
+
+    # First extract candidates according to checkboxes
+    for checkbox in checkboxes:
+        min_dist = 10000
+        nearest_candidate, n_index = None, None
+
+        up, down = checkbox["TOP_LEFT_Y"], checkbox["BOTTOM_RIGHT_Y"]
+        left, right = checkbox["TOP_LEFT_X"], checkbox["BOTTOM_RIGHT_X"]
+
+        for i_cand, candidate in enumerate(candidates):
+            x1,y1,x2,y2 = candidate["box"]
+            if (up<=y1<=down) or (up<=y2<=down) or (y1<=up<=y2) or (y1<=down<=y2):
+                dist = left-x2 if sense == "left" else x1-right
+                if 0<dist<min_dist:
+                    min_dist = dist
+                    nearest_candidate, n_index = candidate, i_cand
+
+        # Found  list
+        if nearest_candidate and list_condition_dict:
+
+            _, res_seq = list_process([nearest_candidate], list_condition_dict, lists_df)
+
+            if res_seq and not res_seq in check_candidates:
+                check_candidates.append(res_seq)
+                candidates_indices.append(i_cand)
+
+        else:
+            candidates_indices, check_candidates = n_index, nearest_candidate
+    
+    return candidates_indices, check_candidates
+
+def Nechantillon_ELPV(candidates):
+    match_indices, res_seq = [], []
+    base1, base2 = year-1, year+2 # Thresholds
+    
+    for i_candidate, candidate in enumerate(candidates):
+        if len(candidate["text"])<4:
+            for i_word, word in enumerate(candidate["text"]):
+                if len(word)>3 and not "/" in word:
+                    try_list = [(base1-2000, base2-2000), (base1,base2)]
+                    for date_tuple in try_list:
+                        num1, num2 = date_tuple
+                        if word[:len(str(num1))].isnumeric():
+                            date_num, code_num = word[:len(str(num1))], word[len(str(num1)):].upper()
+                            if num1 <= int(date_num) < num2 : # Try to avoid strings shorter than NUM
+                                res="".join(candidate["text"][i_word:])
+                                res_upper = res.upper()
+                                
+                                # Replace common mistake
+                                correction_list = [("MPA", "MP4"), ("N0", "NO"), ("AUOP", "AU0P"), ("CEOP", "CE0P"), ("GEL0", "GELO"), ("PLOP", "PL0P"), 
+                                    ("PLIP", "PL1P"), ("NCIP", "NC1P"), ("NCIE", "NC1E"), ("S0R", "SOR"), ("1F", "IF")]
+                                for cor_tuple in correction_list:
+                                    error, correction = cor_tuple
+                                    if code_num[:len(error)] == error:
+                                        res_upper = res_upper.replace(error, correction, 1)
+                                        break # One possibility
+                                if code_num[5:9] == "S0PDT": # Unique case
+                                    res_upper.replace("SP0DT", "SOPODT", 1)
+                                
+                                match_indices, res_seq = [i_candidate], [res_upper]
+                    # Special case
+                    if "GECA" in word:
+                        res_upper = str(year)+word if str(year) not in word else word
+                        try :
+                            if candidate["text"][i_word+1].isnumeric():
+                                res_upper += candidate["text"][i_word+1]
+                        except:
+                            pass
+                        match_indices, res_seq = [i_candidate], [res_upper]
+
+    return match_indices, res_seq
+
+def condition_filter(candidates_dicts, condition, model, application_path, ocr_pathes, checkboxes=None):
     """_summary_
 
     Args:
@@ -291,7 +429,7 @@ def condition_filter(candidates_dicts, condition, MODEL):
     Returns:
         _type_: _description_
     """
-    strip =  "|\[]_!<>{}—;$€&*‘§—~-'(*):" + '"'
+    strip =  "|\[]_!<>{}—;$€&*‘§—~-'(*): " + '"'
     # Arbitrary set
     candidates = deepcopy(candidates_dicts)
     match_indices, res_seq = [], []
@@ -308,8 +446,12 @@ def condition_filter(candidates_dicts, condition, MODEL):
         match_indices, res_seq = date_process(candidates, strip)
 
     if condition[0] == "list": # In this case itertion is over element in the condition list
-        lists_df = pd.read_excel(r"CONFIG\\lists.xlsx", sheet_name=MODEL)
-        match_indices, res_seq= list_process(candidates, condition, lists_df)
+        condition_dict = condition[1]
+        path = os.path.join(application_path, ocr_pathes[condition_dict["path"]])
+
+        lists_df = _get_sheet(path, condition_dict, model)
+        
+        match_indices, res_seq= list_process(candidates, condition_dict, lists_df)
 
     if condition[0] == "format": # In this case itertion is over element in the condition list
         keys = condition[1]
@@ -317,8 +459,27 @@ def condition_filter(candidates_dicts, condition, MODEL):
     
     if condition[0] == "constant":
         match_indices, res_seq = [], [condition[1]]
+    
+    if condition[0] == "checkbox":
+        # The sens where to extract sentences starting from the checkboxe
+        sense = condition[1]
+        # If a list could help to find the sentence
+        try:
+            list_condition_dict = condition[2]
+            # if the list file is global        
+            path = os.path.join(application_path, ocr_pathes[list_condition_dict["path"]])
+            lists_df = _get_sheet(path, list_condition_dict, model)
+        except:
+            list_condition_dict, lists_df = None, None
 
-            
+        match_indices, res_seq = check_process(candidates, sense, checkboxes, lists_df, list_condition_dict)
+    
+    if condition[0] == "echantillon_ELPV": # A special filter for numero d'echantillon
+        match_indices, res_seq = Nechantillon_ELPV(candidates)
+    
+    if condition[0] == "cell": # A special filter for numero d'echantillon
+        match_indices, res_seq = cell_process(candidates)
+
     return match_indices, res_seq
 
 if __name__ == "__main__":
